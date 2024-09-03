@@ -1,6 +1,6 @@
 //
 //  WebSocket.swift
-//  CallSDKTest
+//  QboxCallSDK
 //
 //  Created by Tileubergenov Nurken on 02.09.2024.
 //
@@ -9,20 +9,21 @@ import Foundation
 
 @available(iOS 13.0, *)
 class NativeSocket: NSObject, SocketProvider {
-  let moduleName = "NativeSocket"
+  private let moduleName = "NativeSocket"
   
   weak var delegate: SocketProviderDelegate?
   private var socket: URLSessionWebSocketTask?
-  private var state = SocketState.None {
+  var state = SocketState.None {
     didSet {
       guard state != oldValue  else { return }
+      QBoxLog.debug(moduleName, "Connection state: \(state.rawValue)")
       delegate?.socketDidChange(state: state)
     }
   }
-
+  
   private lazy var urlSession: URLSession = URLSession(
     configuration: .default,
-    delegate: self, 
+    delegate: self,
     delegateQueue: nil
   )
   
@@ -41,7 +42,7 @@ class NativeSocket: NSObject, SocketProvider {
   
   func connect() {
     socket?.resume()
-    readMessage()
+    listen()
   }
   
   func send(_ data: [String: Any]) {
@@ -51,39 +52,52 @@ class NativeSocket: NSObject, SocketProvider {
     }
     let message = String(data: json, encoding: String.Encoding.utf8) ?? ""
     QBoxLog.debug(moduleName, "send() -> data: \(message)")
-
+    
     socket?.send(.string(message)) { _ in }
   }
   
-  private func readMessage() {
+  private func listen() {
     socket?.receive { [weak self] message in
       guard let self = self else { return }
       
       switch message {
-      case .success(.string(let data)):
-        self.readMessage()
-        
+      case .success(.string(let text)):
+        guard
+          let data = text.data(using: .utf8),
+          let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
+        else {
+          QBoxLog.error(moduleName, "DidReceiveMessage() -> json serialize failed, data: \(text)")
+          return
+        }
+        QBoxLog.debug(moduleName, "DidReceiveMessage() -> data: \(json)")
+        delegate?.socketDidRecieve(data: json)
+
       case .success:
-        debugPrint("Warning: Expected to receive data format but received a string. Check the websocket server config.")
+        QBoxLog.debug(moduleName, "listen() -> Data recieved, string expected")
+
       case .failure:
         self.disconnect()
+        return
       }
+      
+      self.listen()
     }
   }
   
-  private func disconnect() {
+  func disconnect() {
     socket?.cancel()
-    delegate?.webSocketDidDisconnect(self)
+    state = SocketState.Disconnected
   }
 }
 
 @available(iOS 13.0, *)
 extension NativeSocket: URLSessionWebSocketDelegate, URLSessionDelegate  {
   func urlSession(_ session: URLSession, webSocketTask: URLSessionWebSocketTask, didOpenWithProtocol protocol: String?) {
-    self.delegate?.webSocketDidConnect(self)
+    state = SocketState.Connected
   }
   
   func urlSession(_ session: URLSession, webSocketTask: URLSessionWebSocketTask, didCloseWith closeCode: URLSessionWebSocketTask.CloseCode, reason: Data?) {
-    self.disconnect()
+    disconnect()
   }
+  
 }

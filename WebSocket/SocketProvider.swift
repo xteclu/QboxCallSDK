@@ -1,6 +1,6 @@
 //
 //  SocketProvider.swift
-//  CallSDKTest
+//  QboxCallSDK
 //
 //  Created by Tileubergenov Nurken on 02.09.2024.
 //
@@ -13,6 +13,7 @@ enum SocketState: String {
 }
 
 protocol SocketProvider: AnyObject {
+  var state: SocketState { get }
   var delegate: SocketProviderDelegate? { get set }
   func connect()
   func disconnect()

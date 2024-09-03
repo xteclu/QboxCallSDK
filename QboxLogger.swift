@@ -9,10 +9,10 @@ import Foundation
 
 public struct QBoxLog {
   static func error(_ module: String, _ message: String) {
-    debugPrint("Qbox." + module + ": " + message)
+    debugPrint("ERROR Qbox." + module + ": " + message)
   }
   
   static func debug(_ module: String, _ message: String) {
-    debugPrint("ERROR Qbox." + module + "." + message)
+    debugPrint("Qbox." + module + "." + message)
   }
 }
