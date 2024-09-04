@@ -22,7 +22,7 @@ func stringifySDPType(_ sdpType: RTCSdpType) -> String {
 protocol RTCClientDelegate: AnyObject {
   func rtcClient(didDiscover localCandidate: RTCIceCandidate)
   func rtcClient(didAdd stream: RTCMediaStream)
-  func rtcClient(didChange state: RTCIceConnectionState)
+  func rtcClient(didChange state: RTCPeerConnectionState)
 }
 
 final class RTCClient: NSObject {
@@ -115,12 +115,10 @@ extension RTCClient {
   
   func set(remoteSdp: RTCSessionDescription) {
     connection?.setRemoteDescription(remoteSdp) { error in
-      DispatchQueue.main.async {
-        if let error = error {
-          QBoxLog.error("RTCClient", "set(remoteSdp) -> error: \(String(describing: error))")
-        } else {
-          QBoxLog.debug("RTCClient", "set(remoteSdp)")
-        }
+      if let error = error {
+        QBoxLog.error("RTCClient", "set(remoteSdp) -> error: \(String(describing: error))")
+      } else {
+        QBoxLog.debug("RTCClient", "set(remoteSdp)")
       }
     }
   }
@@ -168,73 +166,50 @@ extension RTCClient {
 extension RTCClient: RTCPeerConnectionDelegate {
   
   func peerConnection(_ peerConnection: RTCPeerConnection, didChange stateChanged: RTCSignalingState) {
-    DispatchQueue.main.async {
-      let state = SignalingState(stateChanged)
-      QBoxLog.debug("RTCClient", "peerConnection(didChange stateChanged) -> Signaling: \(state)")
-    }
+    let state = SignalingState(stateChanged)
+    QBoxLog.debug("RTCClient", "peerConnection(didChange stateChanged) -> Signaling: \(state)")
   }
   
   func peerConnection(_ peerConnection: RTCPeerConnection, didAdd stream: RTCMediaStream) {
-    DispatchQueue.main.async {
-      [weak self] in
-      QBoxLog.debug("RTCClient", "peerConnection(didAdd) -> StreamId: \(stream.streamId)")
-      self?.delegate?.rtcClient(didAdd: stream)
-    }
+    QBoxLog.debug("RTCClient", "peerConnection(didAdd) -> StreamId: \(stream.streamId)")
+    delegate?.rtcClient(didAdd: stream)
   }
   
   func peerConnection(_ peerConnection: RTCPeerConnection, didRemove stream: RTCMediaStream) {
-    DispatchQueue.main.async {
-      QBoxLog.debug("RTCClient", "peerConnection(didRemove) -> StreamId: \(stream.streamId)")
-    }
+    QBoxLog.debug("RTCClient", "peerConnection(didRemove) -> StreamId: \(stream.streamId)")
   }
   
   func peerConnectionShouldNegotiate(_ peerConnection: RTCPeerConnection) {
-    DispatchQueue.main.async {
-      QBoxLog.debug("RTCClient", "peerConnectionShouldNegotiate()")
-    }
+    QBoxLog.debug("RTCClient", "peerConnectionShouldNegotiate()")
   }
   
   func peerConnection(_ peerConnection: RTCPeerConnection, didChange newState: RTCIceConnectionState) {
-    DispatchQueue.main.async {
-      [weak self] in
-      let state = IceConnectionState(newState)
-      QBoxLog.debug("RTCClient", "peerConnection(didChange) -> IceConnection: \(state)")
-      self?.delegate?.rtcClient(didChange: newState)
-    }
+    let state = IceConnectionState(newState)
+    QBoxLog.debug("RTCClient", "peerConnection(didChange) -> IceConnection: \(state)")
   }
   
   func peerConnection(_ peerConnection: RTCPeerConnection, didChange newState: RTCIceGatheringState) {
-    DispatchQueue.main.async {
-      let state = IceGatheringState(newState)
-      QBoxLog.debug("RTCClient", "peerConnection(didChange) -> IceGathering: \(state)")
-    }
+    let state = IceGatheringState(newState)
+    QBoxLog.debug("RTCClient", "peerConnection(didChange) -> IceGathering: \(state)")
   }
   
   func peerConnection(_ peerConnection: RTCPeerConnection, didChange newState: RTCPeerConnectionState) {
-    DispatchQueue.main.async {
-      let state = PeerConnectionState(newState)
-      QBoxLog.debug("RTCClient", "peerConnection(didChange) -> PeerConnection: \(state)")
-    }
+    let state = PeerConnectionState(newState)
+    QBoxLog.debug("RTCClient", "peerConnection(didChange) -> PeerConnection: \(state)")
+    delegate?.rtcClient(didChange: newState)
   }
   
   func peerConnection(_ peerConnection: RTCPeerConnection, didGenerate candidate: RTCIceCandidate) {
-    DispatchQueue.main.async {
-      [weak self] in
-      QBoxLog.debug("RTCClient", "peerConnection(didGenerate) -> candidate: \(candidate.sdp)")
-      self?.delegate?.rtcClient(didDiscover: candidate)
-    }
+    QBoxLog.debug("RTCClient", "peerConnection(didGenerate) -> candidate: \(candidate.sdp)")
+    delegate?.rtcClient(didDiscover: candidate)
   }
   
   func peerConnection(_ peerConnection: RTCPeerConnection, didRemove candidates: [RTCIceCandidate]) {
-    DispatchQueue.main.async {
-      QBoxLog.debug("RTCClient", "peerConnection(didRemove) - > candidates: \(candidates.count)")
-    }
+    QBoxLog.debug("RTCClient", "peerConnection(didRemove) - > candidates: \(candidates.count)")
   }
 
   func peerConnection(_ peerConnection: RTCPeerConnection, didOpen dataChannel: RTCDataChannel) {
-    DispatchQueue.main.async {
-      QBoxLog.debug("RTCClient", "peerConnection(didOpen) -> channelId: \(dataChannel.channelId)")
-    }
+    QBoxLog.debug("RTCClient", "peerConnection(didOpen) -> channelId: \(dataChannel.channelId)")
   }
 }
 

@@ -17,7 +17,7 @@ protocol SocketProvider: AnyObject {
   var delegate: SocketProviderDelegate? { get set }
   func connect()
   func disconnect()
-  func send(_ data: [String: Any])
+  func send(_ data: [String: Any], completion: @escaping () -> Void)
 }
 
 protocol SocketProviderDelegate: AnyObject {

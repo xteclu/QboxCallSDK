@@ -13,9 +13,11 @@ var qLogMessages: [String] = [
 
 public struct QBoxLog {
   static func print(_ message: String) {
-    debugPrint(message)
-    qLogMessages.append(message)
-    mTable?.updateTable()
+    DispatchQueue.main.async {
+      debugPrint(message)
+      qLogMessages.append(message)
+      mTable?.updateTable()
+    }
   }
   
   static func error(_ module: String, _ message: String) {

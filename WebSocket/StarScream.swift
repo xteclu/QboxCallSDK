@@ -36,13 +36,15 @@ class StarscreamSocket: SocketProvider {
     socket.disconnect()
   }
   
-  func send(_ data: [String: Any]) {
+  func send(_ data: [String: Any], completion: @escaping () -> Void) {
     guard let json = try? JSONSerialization.data(withJSONObject: data) else {
       QBoxLog.error(moduleName, "send() -> JSON exception, data: \(data)")
       return
     }
     let message = String(data: json, encoding: String.Encoding.utf8) ?? ""
-    socket.write(string: message) { }
+    socket.write(string: message) {
+      DispatchQueue.main.async { completion() }
+    }
   }
 }
 

@@ -11,6 +11,15 @@ protocol CallControllerDelegate: AnyObject {
   
 }
 
+class CallSettings {
+  let isSpeakerEnabled: Bool
+  let isMicrophoneEnabled: Bool
+  
+  init(isSpeakerEnabled SpeakerParam: Bool = false, isMicrophoneEnabled MicrophoneParam: Bool = false) {
+    isSpeakerEnabled = SpeakerParam
+    isMicrophoneEnabled = MicrophoneParam
+  }
+}
 
 class CallController {
   let moduleName = "CallController"
@@ -21,23 +30,68 @@ class CallController {
   private var rtc: RTCClient?
   private var token: String?
   private var url: String
+  private var isIdle: Bool = true
+  private var settings: CallSettings? = nil
+  private var onClose: (()->Void)? = nil
   
   public required init(url socketUrl: String) {
     url = socketUrl
   }
   
-  func startCall(token socketToken: String? = nil) -> Bool {
-    if socketToken != nil { token = socketToken }
+  func startCall(token socketToken: String? = nil, with initialSettings: CallSettings? = nil) -> Bool {
+    if isIdle {
+      isIdle = false
+    } else {
+      QBoxLog.error("CallController", "startCall() -> already stated")
+      return false
+    }
     
+    if socketToken != nil { token = socketToken }
+    settings = initialSettings
+
     setSocket()
-    guard let socket = socket else { return false }
+    guard let socket = socket else {
+      isIdle = true
+      return false
+    }
     
     setRTC()
-    guard let _ = rtc?.connection else { return false }
+    guard let _ = rtc?.connection else {
+      isIdle = true
+      return false
+    }
     
     socket.connect()
     
     return true
+  }
+  
+  private func dispose() {
+    if isIdle {
+      onClose?()
+      return
+    } else { isIdle = true }
+
+    socket?.disconnect()
+    rtc?.connection?.close()
+  }
+  
+  func disconnect(completion: @escaping () -> Void) {
+    onClose = completion
+    dispose()
+  }
+  
+  func endCall(completion: @escaping () -> Void) {
+    guard !isIdle else {
+      completion()
+      return
+    }
+
+    onClose = completion
+    socket?.send(["event": "hangup"]) {
+      [weak self] in
+      self?.dispose()
+    }
   }
   
   private func setRTC() {
@@ -52,9 +106,9 @@ class CallController {
       return
     }
     
-    let url = url + "/websocket?token=" + token
+    let url = url.replacingOccurrences(of: "https", with: "ws") + "/websocket?token=" + token
     
-    if #available(iOS 19.0, *) {
+    if #available(iOS 13.0, *) {
       QBoxLog.debug(moduleName, "setSocket() -> using NativeSocket")
       socket = NativeSocket(url: url)
     } else {
@@ -85,7 +139,7 @@ extension CallController{
     socket?.send([
       "event": "dtmf",
       "dtmf": ["digit": digit]
-    ])
+    ]) {}
   }
 }
 // MARK: - Socket Delegate
@@ -96,63 +150,56 @@ extension CallController: SocketProviderDelegate {
       rtc?.offer {
         [weak self] sessionDescription in
         guard let self else { return }
-        DispatchQueue.main.async {
-          QBoxLog.debug("CallController", "socket.send() -> event: call (with sessionDescription)")
-        }
+        QBoxLog.debug("CallController", "socket.send() -> event: call (with sessionDescription)")
         socket?.send([
           "event": "call",
           "call": ["sdp": [
             "sdp": sessionDescription.sdp,
             "type": stringifySDPType(sessionDescription.type)
           ]]
-        ])
+        ]) {}
       }
       
     case .Disconnected:
-      break
+      socket = nil
     case .None:
       break
     }
   }
   
   func socketDidRecieve(data: [String : Any]) {
-    DispatchQueue.main.async {
-      [weak self] in
-      guard let self else { return }
+    let event = data["event"] as? String
+    switch event {
+    case "answer":
+      guard
+        let answer = data["answer"] as? [String: Any],
+        let sdpData = answer["sdp"] as? [String: Any],
+        let sdp = sdpData["sdp"] as? String
+      else { return }
       
-      let event = data["event"] as? String
-      switch event {
-      case "answer":
-        guard
-          let answer = data["answer"] as? [String: Any],
-          let sdpData = answer["sdp"] as? [String: Any],
-          let sdp = sdpData["sdp"] as? String
-        else { return }
-        
-        let remote = RTCSessionDescription(type: .answer, sdp: sdp)
-        QBoxLog.debug(moduleName, "socketDidRecieve() -> Answer")
-        rtc?.set(remoteSdp: remote)
-        
-      case "candidate":
-        guard
-          let candidateData = data["candidate"] as? [String: Any]
-        else { return }
-        
-        let sdpCandidate = candidateData["candidate"] as? String ?? ""
-        let sdpMid = candidateData["sdpMid"] as? String ?? nil
-        let LineIndex = candidateData["sdpMLineIndex"] as? Int ?? 0
-        let candidate = RTCIceCandidate(sdp: sdpCandidate, sdpMLineIndex: Int32(LineIndex), sdpMid: sdpMid)
-        QBoxLog.debug(moduleName, "socketDidRecieve() -> Candidate: \(sdpCandidate)")
-        rtc?.set(remoteCandidate: candidate)
-        
-      case "hangup":
-        QBoxLog.debug(moduleName, "socketDidRecieve() -> Hangup")
-        //      rtc.close()
-        socket?.disconnect()
-        
-      default:
-        break
-      }
+      let remote = RTCSessionDescription(type: .answer, sdp: sdp)
+      QBoxLog.debug(moduleName, "socketDidRecieve() -> Answer")
+      rtc?.set(remoteSdp: remote)
+    
+    case "candidate":
+      guard
+        let candidateData = data["candidate"] as? [String: Any]
+      else { return }
+      
+      let sdpCandidate = candidateData["candidate"] as? String ?? ""
+      let sdpMid = candidateData["sdpMid"] as? String ?? nil
+      let LineIndex = candidateData["sdpMLineIndex"] as? Int ?? 0
+      let candidate = RTCIceCandidate(sdp: sdpCandidate, sdpMLineIndex: Int32(LineIndex), sdpMid: sdpMid)
+      QBoxLog.debug(moduleName, "socketDidRecieve() -> Candidate: \(sdpCandidate)")
+      rtc?.set(remoteCandidate: candidate)
+      
+    case "hangup":
+      QBoxLog.debug(moduleName, "socketDidRecieve() -> Hangup")
+      //      rtc.close()
+      socket?.disconnect()
+      
+    default:
+      break
     }
   }
 }
@@ -168,12 +215,25 @@ extension CallController: RTCClientDelegate {
     socket?.send([
       "event": "candidate",
       "candidate": data
-    ])
+    ]) {}
   }
   
   func rtcClient(didAdd stream: RTCMediaStream) {
   }
   
-  func rtcClient(didChange state: RTCIceConnectionState) {
+  func rtcClient(didChange state: RTCPeerConnectionState) {
+    switch state {
+    case RTCPeerConnectionState.connected:
+      guard let currentSettings = settings else { return }
+      
+      setAudioInput(isEnabled: currentSettings.isMicrophoneEnabled)
+      setSpeaker(isEnabled: currentSettings.isSpeakerEnabled)
+      settings = nil
+    case RTCPeerConnectionState.closed:
+      rtc = nil
+      onClose?()
+    default:
+      break
+    }
   }
 }

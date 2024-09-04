@@ -45,14 +45,16 @@ class NativeSocket: NSObject, SocketProvider {
     listen()
   }
   
-  func send(_ data: [String: Any]) {
+  func send(_ data: [String: Any], completion: @escaping () -> Void) {
     guard let json = try? JSONSerialization.data(withJSONObject: data) else {
       QBoxLog.error(moduleName, "send() -> JSON exception, data: \(data)")
       return
     }
     let message = String(data: json, encoding: String.Encoding.utf8) ?? ""
     
-    socket?.send(.string(message)) { _ in }
+    socket?.send(.string(message)) { _ in
+      DispatchQueue.main.async { completion() }
+    }
   }
   
   private func listen() {

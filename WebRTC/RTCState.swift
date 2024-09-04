@@ -1,6 +1,6 @@
 //
 //  RTCState.swift
-//  CallSDKTest
+//  QboxCallSDK
 //
 //  Created by Tileubergenov Nurken on 04.09.2024.
 //
