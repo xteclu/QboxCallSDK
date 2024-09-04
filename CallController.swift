@@ -42,7 +42,7 @@ class CallController {
     if isIdle {
       isIdle = false
     } else {
-      QBoxLog.error("CallController", "startCall() -> already stated")
+      QBoxLog.error("CallController", "startCall() -> already started")
       return false
     }
     
