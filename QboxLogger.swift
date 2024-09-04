@@ -7,12 +7,22 @@
 
 import Foundation
 
+var qLogMessages: [String] = [
+  "Logs start"
+]
+
 public struct QBoxLog {
+  static func print(_ message: String) {
+    debugPrint(message)
+    qLogMessages.append(message)
+    mTable?.updateTable()
+  }
+  
   static func error(_ module: String, _ message: String) {
-    debugPrint("ERROR Qbox." + module + ": " + message)
+    QBoxLog.print("ERROR Qbox." + module + ": " + message)
   }
   
   static func debug(_ module: String, _ message: String) {
-    debugPrint("Qbox." + module + "." + message)
+    QBoxLog.print("Qbox." + module + "." + message)
   }
 }

@@ -16,7 +16,7 @@ class NativeSocket: NSObject, SocketProvider {
   var state = SocketState.None {
     didSet {
       guard state != oldValue  else { return }
-      QBoxLog.debug(moduleName, "Connection state: \(state.rawValue)")
+      QBoxLog.debug(moduleName, "state: \(state.rawValue)")
       delegate?.socketDidChange(state: state)
     }
   }
@@ -51,14 +51,13 @@ class NativeSocket: NSObject, SocketProvider {
       return
     }
     let message = String(data: json, encoding: String.Encoding.utf8) ?? ""
-    QBoxLog.debug(moduleName, "send() -> data: \(message)")
     
     socket?.send(.string(message)) { _ in }
   }
   
   private func listen() {
     socket?.receive { [weak self] message in
-      guard let self = self else { return }
+      guard let self else { return }
       
       switch message {
       case .success(.string(let text)):
@@ -69,12 +68,11 @@ class NativeSocket: NSObject, SocketProvider {
           QBoxLog.error(moduleName, "DidReceiveMessage() -> json serialize failed, data: \(text)")
           return
         }
-        QBoxLog.debug(moduleName, "DidReceiveMessage() -> data: \(json)")
         delegate?.socketDidRecieve(data: json)
-
+        
       case .success:
         QBoxLog.debug(moduleName, "listen() -> Data recieved, string expected")
-
+        
       case .failure:
         self.disconnect()
         return

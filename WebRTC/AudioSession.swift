@@ -29,8 +29,9 @@ class AudioSession: NSObject {
     } catch {
       QBoxLog.error(moduleName, "configure() - > error: \(error)")
     }
-
-    session.unlockForConfiguration()  }
+    
+    session.unlockForConfiguration()
+  }
   
   func setSpeaker(_ isForced: Bool) {
     RTCDispatcher.dispatchAsync(on: .typeAudioSession) {
@@ -39,14 +40,14 @@ class AudioSession: NSObject {
       let portOverride = isForced ? AVAudioSession.PortOverride.speaker : AVAudioSession.PortOverride.none
       
       session.lockForConfiguration()
-
+      
       do {
         try session.setCategory(.playAndRecord)
         try session.overrideOutputAudioPort(portOverride)
       } catch {
         QBoxLog.error("RTCAudioSession", "setSpeaker(\(isForced)) - > error: \(error)")
       }
-
+      
       session.unlockForConfiguration()
     }
   }

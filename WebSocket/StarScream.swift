@@ -17,7 +17,7 @@ class StarscreamSocket: SocketProvider {
   var state = SocketState.None {
     didSet {
       guard state != oldValue  else { return }
-      QBoxLog.debug(moduleName, "Connection state: \(state.rawValue)")
+      QBoxLog.debug(moduleName, "state: \(state.rawValue)")
       delegate?.socketDidChange(state: state)
     }
   }
@@ -42,7 +42,6 @@ class StarscreamSocket: SocketProvider {
       return
     }
     let message = String(data: json, encoding: String.Encoding.utf8) ?? ""
-    QBoxLog.debug(moduleName, "send() -> data: \(message)")
     socket.write(string: message) { }
   }
 }
@@ -53,20 +52,21 @@ extension StarscreamSocket: WebSocketDelegate {
   }
   
   func websocketDidDisconnect(socket: any Starscream.WebSocketClient, error: (any Error)?) {
+    if let error = error {
+      QBoxLog.error(moduleName, String(describing: error))
+    }
     state = SocketState.Disconnected
   }
   
   func websocketDidReceiveMessage(socket: any Starscream.WebSocketClient, text: String) {
     guard
       let data = text.data(using: .utf8),
-      let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-      let event = json["event"] as? String
+      let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
     else {
       QBoxLog.error(moduleName, "DidReceiveMessage() -> json serialize failed, data: \(text)")
       return
     }
     
-    QBoxLog.debug(moduleName, "DidReceiveMessage() -> data: \(json)")
     delegate?.socketDidRecieve(data: json)
   }
   

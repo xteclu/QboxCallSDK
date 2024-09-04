@@ -7,10 +7,15 @@
 
 import WebRTC
 
+protocol CallControllerDelegate: AnyObject {
+  
+}
+
 
 class CallController {
   let moduleName = "CallController"
   
+  weak var delegate: CallControllerDelegate?
   private let iceServers = [RTCIceServer(urlStrings: ["stun:stun.l.google.com:19302"])]
   private var socket: SocketProvider?
   private var rtc: RTCClient?
@@ -60,7 +65,6 @@ class CallController {
     
     QBoxLog.debug(moduleName, "setSocket() -> done")
   }
-  
 }
 // MARK: - Control methods
 extension CallController{
@@ -77,6 +81,7 @@ extension CallController{
   }
   
   public func sendDTMF(digit: String) {
+    QBoxLog.debug(moduleName, "socket.send() -> event: dtmf, digit: \(digit)")
     socket?.send([
       "event": "dtmf",
       "dtmf": ["digit": digit]
@@ -86,41 +91,68 @@ extension CallController{
 // MARK: - Socket Delegate
 extension CallController: SocketProviderDelegate {
   func socketDidChange(state: SocketState) {
+    switch state {
+    case .Connected:
+      rtc?.offer {
+        [weak self] sessionDescription in
+        guard let self else { return }
+        DispatchQueue.main.async {
+          QBoxLog.debug("CallController", "socket.send() -> event: call (with sessionDescription)")
+        }
+        socket?.send([
+          "event": "call",
+          "call": ["sdp": [
+            "sdp": sessionDescription.sdp,
+            "type": stringifySDPType(sessionDescription.type)
+          ]]
+        ])
+      }
+      
+    case .Disconnected:
+      break
+    case .None:
+      break
+    }
   }
   
   func socketDidRecieve(data: [String : Any]) {
-    let event = data["event"] as? String
-    switch event {
-    case "answer":
-      guard
-        let answer = data["answer"] as? [String: Any],
-        let sdpData = answer["sdp"] as? [String: Any],
-        let sdp = sdpData["sdp"] as? String
-      else { return }
-
-      let remote = RTCSessionDescription(type: .answer, sdp: sdp)
-      QBoxLog.debug(moduleName, "socketDidRecieve() -> Answer")
-      rtc?.set(remoteSdp: remote)
-
-    case "candidate":
-      guard 
-        let candidateData = data["candidate"] as? [String: Any]
-      else { return }
-
-      let sdpCandidate = candidateData["candidate"] as? String ?? ""
-      let sdpMid = candidateData["sdpMid"] as? String ?? nil
-      let LineIndex = candidateData["sdpMLineIndex"] as? Int ?? 0
-      let candidate = RTCIceCandidate(sdp: sdpCandidate, sdpMLineIndex: Int32(LineIndex), sdpMid: sdpMid)
-      QBoxLog.debug(moduleName, "socketDidRecieve() -> Candidate: \(candidate)")
-      rtc?.set(remoteCandidate: candidate)
-
-    case "hangup":
-      QBoxLog.debug(moduleName, "socketDidRecieve() -> Hangup")
-//      rtc.close()
-      socket?.disconnect()
-
-    default:
-      break
+    DispatchQueue.main.async {
+      [weak self] in
+      guard let self else { return }
+      
+      let event = data["event"] as? String
+      switch event {
+      case "answer":
+        guard
+          let answer = data["answer"] as? [String: Any],
+          let sdpData = answer["sdp"] as? [String: Any],
+          let sdp = sdpData["sdp"] as? String
+        else { return }
+        
+        let remote = RTCSessionDescription(type: .answer, sdp: sdp)
+        QBoxLog.debug(moduleName, "socketDidRecieve() -> Answer")
+        rtc?.set(remoteSdp: remote)
+        
+      case "candidate":
+        guard
+          let candidateData = data["candidate"] as? [String: Any]
+        else { return }
+        
+        let sdpCandidate = candidateData["candidate"] as? String ?? ""
+        let sdpMid = candidateData["sdpMid"] as? String ?? nil
+        let LineIndex = candidateData["sdpMLineIndex"] as? Int ?? 0
+        let candidate = RTCIceCandidate(sdp: sdpCandidate, sdpMLineIndex: Int32(LineIndex), sdpMid: sdpMid)
+        QBoxLog.debug(moduleName, "socketDidRecieve() -> Candidate: \(sdpCandidate)")
+        rtc?.set(remoteCandidate: candidate)
+        
+      case "hangup":
+        QBoxLog.debug(moduleName, "socketDidRecieve() -> Hangup")
+        //      rtc.close()
+        socket?.disconnect()
+        
+      default:
+        break
+      }
     }
   }
 }
@@ -132,6 +164,7 @@ extension CallController: RTCClientDelegate {
       "sdpMid": localCandidate.sdpMid ?? "0",
       "sdpMLineIndex": Int(localCandidate.sdpMLineIndex)
     ]
+    QBoxLog.debug(moduleName, "socket.send() -> event: candidate")
     socket?.send([
       "event": "candidate",
       "candidate": data
