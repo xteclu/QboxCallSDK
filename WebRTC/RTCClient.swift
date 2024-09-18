@@ -56,9 +56,10 @@ final class RTCClient: NSObject {
     connection?.delegate = self
   }
   
-  deinit {
-    RTCCleanupSSL()
-    audioSession = nil
+  func close() {
+    connection?.close()
+//    RTCCleanupSSL()
+//    audioSession?.disable()
   }
   
   func setPeerConnection(with iceServers: [RTCIceServer]) -> RTCPeerConnection? {
@@ -124,13 +125,14 @@ extension RTCClient {
   }
   
   func set(remoteCandidate: RTCIceCandidate) {
-    connection?.add(remoteCandidate) { error in
-      if let error = error {
-        QBoxLog.error("RTCClient", "set(remoteCandidate) -> error: \(String(describing: error))")
-      } else {
-        QBoxLog.debug("RTCClient", "set(remoteCandidate)")
-      }
-    }
+    connection?.add(remoteCandidate) 
+//    { error in
+//      if let error = error {
+//        QBoxLog.error("RTCClient", "set(remoteCandidate) -> error: \(String(describing: error))")
+//      } else {
+//        QBoxLog.debug("RTCClient", "set(remoteCandidate)")
+//      }
+//    }
   }
 }
 // MARK: - Media

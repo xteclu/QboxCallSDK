@@ -21,13 +21,26 @@ class AudioSession: NSObject {
     session.lockForConfiguration()
     
     do {
-      try session.setCategory(.playAndRecord)
-      try session.setActive(true)
-      try session.setMode(.voiceChat)
+      try session.setCategory(AVAudioSession.Category.playAndRecord.rawValue)
+//      try session.setActive(true)  // Can be dangerous, if not set to false after
+      try session.setMode(AVAudioSession.Mode.voiceChat.rawValue)
       try session.setPreferredSampleRate(44100.0)
       try session.setPreferredIOBufferDuration(0.005)
     } catch {
       QBoxLog.error(moduleName, "configure() - > error: \(error)")
+    }
+    
+    session.unlockForConfiguration()
+  }
+  
+  func disable() {
+    let session = RTCAudioSession.sharedInstance()
+    session.lockForConfiguration()
+    
+    do {
+      try session.setActive(false)
+    } catch {
+      QBoxLog.error(moduleName, "disable() - > error: \(error)")
     }
     
     session.unlockForConfiguration()
@@ -42,7 +55,7 @@ class AudioSession: NSObject {
       session.lockForConfiguration()
       
       do {
-        try session.setCategory(.playAndRecord)
+        try session.setCategory(AVAudioSession.Category.playAndRecord.rawValue)
         try session.overrideOutputAudioPort(portOverride)
       } catch {
         QBoxLog.error("RTCAudioSession", "setSpeaker(\(isForced)) - > error: \(error)")

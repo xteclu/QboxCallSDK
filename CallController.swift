@@ -8,14 +8,23 @@
 import WebRTC
 
 protocol CallControllerDelegate: AnyObject {
-  
+  func callController(peerConnectionDidChange state: RTCPeerConnectionState)
+  func callController(socketDidChange state: SocketState)
+}
+
+extension CallControllerDelegate {
+  func callController(peerConnectionDidChange state: RTCPeerConnectionState) {}
+  func callController(socketDidChange state: SocketState) {}
 }
 
 class CallSettings {
-  let isSpeakerEnabled: Bool
-  let isMicrophoneEnabled: Bool
+  var isSpeakerEnabled: Bool
+  var isMicrophoneEnabled: Bool
   
-  init(isSpeakerEnabled SpeakerParam: Bool = false, isMicrophoneEnabled MicrophoneParam: Bool = false) {
+  init(
+    isSpeakerEnabled SpeakerParam: Bool = false,
+    isMicrophoneEnabled MicrophoneParam: Bool = false
+  ) {
     isSpeakerEnabled = SpeakerParam
     isMicrophoneEnabled = MicrophoneParam
   }
@@ -31,11 +40,11 @@ class CallController {
   private var token: String?
   private var url: String
   private var isIdle: Bool = true
-  private var settings: CallSettings? = nil
-  private var onClose: (()->Void)? = nil
+  private var settings: CallSettings
   
   public required init(url socketUrl: String) {
     url = socketUrl
+    settings = CallSettings(isSpeakerEnabled: false, isMicrophoneEnabled: false)
   }
   
   func startCall(token socketToken: String? = nil, with initialSettings: CallSettings? = nil) -> Bool {
@@ -47,7 +56,7 @@ class CallController {
     }
     
     if socketToken != nil { token = socketToken }
-    settings = initialSettings
+    settings = initialSettings ?? settings
 
     setSocket()
     guard let socket = socket else {
@@ -67,27 +76,22 @@ class CallController {
   }
   
   private func dispose() {
-    if isIdle {
-      onClose?()
-      return
-    } else { isIdle = true }
+    if !isIdle { isIdle = true }
 
+    rtc?.close()
+    
     socket?.disconnect()
-    rtc?.connection?.close()
   }
   
-  func disconnect(completion: @escaping () -> Void) {
-    onClose = completion
+  func disconnect() {
     dispose()
   }
   
-  func endCall(completion: @escaping () -> Void) {
+  func endCall() {
     guard !isIdle else {
-      completion()
       return
     }
 
-    onClose = completion
     socket?.send(["event": "hangup"]) {
       [weak self] in
       self?.dispose()
@@ -124,6 +128,7 @@ class CallController {
 extension CallController{
   public func setAudioInput(isEnabled: Bool) {
     rtc?.setAudioInput(isEnabled)
+    settings.isMicrophoneEnabled = isEnabled
   }
   
   public func setAudioOutput(isEnabled: Bool) {
@@ -132,6 +137,7 @@ extension CallController{
   
   public func setSpeaker(isEnabled: Bool) {
     rtc?.setSpeaker(isEnabled)
+    settings.isSpeakerEnabled = isEnabled
   }
   
   public func sendDTMF(digit: String) {
@@ -162,9 +168,12 @@ extension CallController: SocketProviderDelegate {
       
     case .Disconnected:
       socket = nil
+      isIdle = true
     case .None:
       break
     }
+    
+    delegate?.callController(socketDidChange: state)
   }
   
   func socketDidRecieve(data: [String : Any]) {
@@ -224,16 +233,14 @@ extension CallController: RTCClientDelegate {
   func rtcClient(didChange state: RTCPeerConnectionState) {
     switch state {
     case RTCPeerConnectionState.connected:
-      guard let currentSettings = settings else { return }
-      
-      setAudioInput(isEnabled: currentSettings.isMicrophoneEnabled)
-      setSpeaker(isEnabled: currentSettings.isSpeakerEnabled)
-      settings = nil
+      setAudioInput(isEnabled: settings.isMicrophoneEnabled)
+      setSpeaker(isEnabled: settings.isSpeakerEnabled)
     case RTCPeerConnectionState.closed:
-      rtc = nil
-      onClose?()
+      break
     default:
       break
     }
+    
+    delegate?.callController(peerConnectionDidChange: state)
   }
 }

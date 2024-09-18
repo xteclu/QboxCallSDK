@@ -7,16 +7,10 @@
 
 import Foundation
 
-var qLogMessages: [String] = [
-  "Logs start"
-]
-
 public struct QBoxLog {
   static func print(_ message: String) {
     DispatchQueue.main.async {
       debugPrint(message)
-      qLogMessages.append(message)
-      mTable?.updateTable()
     }
   }
   
