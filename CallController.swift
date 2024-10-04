@@ -7,7 +7,7 @@
 
 import WebRTC
 
-protocol CallControllerDelegate: AnyObject {
+public protocol CallControllerDelegate: AnyObject {
   func callController(peerConnectionDidChange state: RTCPeerConnectionState)
   func callController(socketDidChange state: SocketState)
 }
@@ -17,11 +17,11 @@ extension CallControllerDelegate {
   func callController(socketDidChange state: SocketState) {}
 }
 
-class CallSettings {
+public class CallSettings {
   var isSpeakerEnabled: Bool
   var isMicrophoneEnabled: Bool
   
-  init(
+  public init(
     isSpeakerEnabled SpeakerParam: Bool = false,
     isMicrophoneEnabled MicrophoneParam: Bool = false
   ) {
@@ -30,7 +30,7 @@ class CallSettings {
   }
 }
 
-class CallController {
+public class CallController {
   let moduleName = "CallController"
   
   weak var delegate: CallControllerDelegate?
@@ -47,7 +47,7 @@ class CallController {
     settings = CallSettings(isSpeakerEnabled: false, isMicrophoneEnabled: false)
   }
   
-  func startCall(token socketToken: String? = nil, with initialSettings: CallSettings? = nil) -> Bool {
+  public func startCall(token socketToken: String? = nil, with initialSettings: CallSettings? = nil) -> Bool {
     if isIdle {
       isIdle = false
     } else {
@@ -83,11 +83,11 @@ class CallController {
     socket?.disconnect()
   }
   
-  func disconnect() {
+  public func disconnect() {
     dispose()
   }
   
-  func endCall() {
+  public func endCall() {
     guard !isIdle else {
       return
     }

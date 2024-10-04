@@ -8,7 +8,7 @@
 import Foundation
 import WebRTC
 
-func IceConnectionState(_ state: RTCIceConnectionState) -> String {
+public func IceConnectionState(_ state: RTCIceConnectionState) -> String {
   switch state {
   case .new:
     return "New"
@@ -31,7 +31,7 @@ func IceConnectionState(_ state: RTCIceConnectionState) -> String {
   }
 }
 
-func SignalingState(_ state: RTCSignalingState) -> String {
+public func SignalingState(_ state: RTCSignalingState) -> String {
   switch state {
   case .stable:
     return "Stable"
@@ -50,7 +50,7 @@ func SignalingState(_ state: RTCSignalingState) -> String {
   }
 }
 
-func IceGatheringState(_ state: RTCIceGatheringState) -> String {
+public func IceGatheringState(_ state: RTCIceGatheringState) -> String {
   switch state {
   case .new:
     return "New"
@@ -63,7 +63,7 @@ func IceGatheringState(_ state: RTCIceGatheringState) -> String {
   }
 }
 
-func PeerConnectionState(_ state: RTCPeerConnectionState) -> String {
+public func PeerConnectionState(_ state: RTCPeerConnectionState) -> String {
   switch state {
   case .new:
     return "New"

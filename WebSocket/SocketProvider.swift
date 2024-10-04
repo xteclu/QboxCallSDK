@@ -8,7 +8,7 @@
 import Foundation
 
 
-enum SocketState: String {
+public enum SocketState: String {
   case None, Connected, Disconnected
 }
 

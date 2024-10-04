@@ -8,17 +8,17 @@
 import Foundation
 
 public struct QBoxLog {
-  static func print(_ message: String) {
+  public static func print(_ message: String) {
     DispatchQueue.main.async {
       debugPrint(message)
     }
   }
   
-  static func error(_ module: String, _ message: String) {
+  public static func error(_ module: String, _ message: String) {
     QBoxLog.print("ERROR Qbox." + module + ": " + message)
   }
   
-  static func debug(_ module: String, _ message: String) {
+  public static func debug(_ module: String, _ message: String) {
     QBoxLog.print("Qbox." + module + "." + message)
   }
 }
