@@ -13,7 +13,7 @@ func stringifySDPType(_ sdpType: RTCSdpType) -> String {
   case .offer:    return "offer"
   case .answer:   return "answer"
   case .prAnswer: return "prAnswer"
-    //  case .rollback: return "rollback"
+  case .rollback: return "rollback"
   @unknown default:
     return "unknown"
   }
@@ -125,14 +125,14 @@ extension RTCClient {
   }
   
   func set(remoteCandidate: RTCIceCandidate) {
-    connection?.add(remoteCandidate) 
-//    { error in
-//      if let error = error {
-//        QBoxLog.error("RTCClient", "set(remoteCandidate) -> error: \(String(describing: error))")
-//      } else {
-//        QBoxLog.debug("RTCClient", "set(remoteCandidate)")
-//      }
-//    }
+    connection?.add(remoteCandidate)
+    { error in
+      if let error = error {
+        QBoxLog.error("RTCClient", "set(remoteCandidate) -> error: \(String(describing: error))")
+      } else {
+        QBoxLog.debug("RTCClient", "set(remoteCandidate)")
+      }
+    }
   }
 }
 // MARK: - Media

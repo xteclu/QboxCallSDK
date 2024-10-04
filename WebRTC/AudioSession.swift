@@ -21,9 +21,9 @@ class AudioSession: NSObject {
     session.lockForConfiguration()
     
     do {
-      try session.setCategory(AVAudioSession.Category.playAndRecord.rawValue)
+      try session.setCategory(AVAudioSession.Category.playAndRecord)
 //      try session.setActive(true)  // Can be dangerous, if not set to false after
-      try session.setMode(AVAudioSession.Mode.voiceChat.rawValue)
+      try session.setMode(AVAudioSession.Mode.voiceChat)
       try session.setPreferredSampleRate(44100.0)
       try session.setPreferredIOBufferDuration(0.005)
     } catch {
@@ -55,7 +55,7 @@ class AudioSession: NSObject {
       session.lockForConfiguration()
       
       do {
-        try session.setCategory(AVAudioSession.Category.playAndRecord.rawValue)
+        try session.setCategory(AVAudioSession.Category.playAndRecord)
         try session.overrideOutputAudioPort(portOverride)
       } catch {
         QBoxLog.error("RTCAudioSession", "setSpeaker(\(isForced)) - > error: \(error)")
